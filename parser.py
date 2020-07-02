@@ -16,17 +16,29 @@ def main():
     config = loadConfig()
     if not config:
         exit(-1)
+
     currentVisitors, currentFree = getClientCount(config['targetUrl'])
     if currentVisitors is None or currentFree is None:
         Log.log(Log.error, 'Failed to parse: currentVisitors = {}, currentFree = {}'.format(currentVisitors, currentFree))
         exit(-1)
+
     csvExists = os.path.exists(config['outputCSV'])
     csvFile = os.path.join(outputDir, config['outputCSV'])
+    lastEntry = None
+
+    if csvExists:
+        with open(csvFile, 'r') as outputCSV:
+            for line in outputCSV:
+                pass
+            lastEntry = line
+
     with open(csvFile, 'a') as outputCSV:
         if not csvExists:
             outputCSV.write('time,visitors,available\n')
         currentTime = datetime.now().replace(microsecond=0).isoformat()
-        outputCSV.write('{},{},{}\n'.format(currentTime, currentVisitors, currentFree))
+        newEntry = '{},{},{}\n'.format(currentTime, currentVisitors, currentFree)
+        if not lastEntry or not lastEntry.partition(',')[2] == newEntry.partition(',')[2]:
+            outputCSV.write(newEntry)
 
 def getClientCount(url):
     html = urllib.request.urlopen(url).read()
