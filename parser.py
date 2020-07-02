@@ -22,8 +22,8 @@ def main():
         Log.log(Log.error, 'Failed to parse: currentVisitors = {}, currentFree = {}'.format(currentVisitors, currentFree))
         exit(-1)
 
-    csvExists = os.path.exists(config['outputCSV'])
     csvFile = os.path.join(outputDir, config['outputCSV'])
+    csvExists = os.path.exists(csvFile)
     lastEntry = None
 
     if csvExists:
