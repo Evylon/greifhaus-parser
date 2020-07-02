@@ -10,6 +10,7 @@ defaultConfig = {
     'outputCSV': 'greifhaus-counter.csv',
     'targetUrl': 'https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IkdyZWlmaGF1cyJ9.3Nen_IU5N2sVtJbP44CGCFfdKY93zQx2FRczY4z9Jy0'
 }
+outputDir = os.path.dirname(__file__)
 
 def main():
     config = loadConfig()
@@ -20,7 +21,8 @@ def main():
         Log.log(Log.error, 'Failed to parse: currentVisitors = {}, currentFree = {}'.format(currentVisitors, currentFree))
         exit(-1)
     csvExists = os.path.exists(config['outputCSV'])
-    with open(config['outputCSV'], 'a') as outputCSV:
+    csvFile = os.path.join(outputDir, config['outputCSV'])
+    with open(csvFile, 'a') as outputCSV:
         if not csvExists:
             outputCSV.write('time,visitors,available\n')
         currentTime = datetime.now().replace(microsecond=0).isoformat()
@@ -40,8 +42,7 @@ def getClientCount(url):
 
 def loadConfig():
     # constants
-    configPath = os.path.dirname(__file__)
-    configFilename = os.path.join(configPath, 'config.json')
+    configFilename = os.path.join(outputDir, 'config.json')
     # check if file exists
     if not os.path.isfile(configFilename):
         Log.log(Log.error, 'File "{0}" not found. Creating empty config file, please fill in the empty fields'.format(configFilename))
