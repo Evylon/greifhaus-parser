@@ -7,8 +7,9 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 defaultConfig = {
-    'outputCSV': 'greifhaus-counter.csv',
-    'targetUrl': 'https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IkdyZWlmaGF1cyJ9.3Nen_IU5N2sVtJbP44CGCFfdKY93zQx2FRczY4z9Jy0'
+    'targets': {
+        'greifhaus': 'https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IkdyZWlmaGF1cyJ9.3Nen_IU5N2sVtJbP44CGCFfdKY93zQx2FRczY4z9Jy0'
+    }
 }
 outputDir = os.path.dirname(__file__)
 
@@ -16,13 +17,18 @@ def main():
     config = loadConfig()
     if not config:
         exit(-1)
+    targetData = config['targets']
+    for target in targetData:
+        parseTarget(target, targetData[target])
+    
 
-    currentVisitors, currentFree = getClientCount(config['targetUrl'])
+def parseTarget(target, targetUrl):
+    currentVisitors, currentFree = getClientCount(targetUrl)
     if currentVisitors is None or currentFree is None:
         Log.log(Log.error, 'Failed to parse: currentVisitors = {}, currentFree = {}'.format(currentVisitors, currentFree))
         exit(-1)
 
-    csvFile = os.path.join(outputDir, config['outputCSV'])
+    csvFile = os.path.join(outputDir, '{}-counter.csv'.format(target))
     csvExists = os.path.exists(csvFile)
     lastEntry = None
 
