@@ -5,9 +5,11 @@ import os, os.path
 import json
 from datetime import datetime
 from bs4 import BeautifulSoup
+import re
 
 TYPE_BOULDERADO = 'boulderado'
 TYPE_WEBCLIMBER = 'webclimber'
+TYPE_ROCKGYMPRO = 'rock-gym-pro'
 defaultConfig = {
     'targets': [
         {
@@ -19,6 +21,11 @@ defaultConfig = {
             'name': 'fliegerhalle',
             'url': 'https://158.webclimber.de/de/trafficlight?callback=WebclimberTrafficlight.insertTrafficlight&key=yspPh6Mr2KdST3br8WC7X8p6BdETgmPn&hid=158&container=trafficlightContainer&type=&area=',
             'type': TYPE_WEBCLIMBER
+        },
+        {
+            'name': 'the-spot',
+            'url': 'https://portal.rockgympro.com/portal/public/415a34a23151c6546419c1415d122b61/occupancy?&iframeid=occupancyCounter&fId=',
+            'type': TYPE_ROCKGYMPRO
         }
     ],
     'outputDir': os.path.dirname(__file__)
@@ -71,6 +78,8 @@ def getClientCount(target):
         return parseBoulderado(soup)
     elif target['type'] == TYPE_WEBCLIMBER:
         return parseWebclimber(soup)
+    elif target['type'] == TYPE_ROCKGYMPRO:
+        return parseRockGymPro(soup)
 
 def parseBoulderado(soup):
     currentVisitors = None
@@ -87,9 +96,22 @@ def parseWebclimber(soup):
     currentFree = None
     for div in soup.find_all('div'):
         if 'style' in div.attrs:
-            currentVisitors = int(div['style'].split(';')[0].split(' ')[1].strip('%'))
+            currentVisitors = int(re.search(r'width: (\d+?)%;', div['style']).group(1))
             currentFree = 100 - currentVisitors
     return (currentVisitors, currentFree)
+
+def parseRockGymPro(soup):
+    currentVisitors = None
+    currentFree = None
+    for script in soup.find_all('script'):
+        contents = script.contents
+        if contents and 'capacity' in contents[0] and 'count' in contents[0]:
+            script = contents[0].replace('\n', '').replace(' ', '')
+            capacity = int(re.search(r'\'capacity\':(\d+?),', script).group(1))
+            currentVisitors = int(re.search(r'\'count\':(\d+?),', script).group(1))
+            currentFree = capacity - currentVisitors
+    return (currentVisitors, currentFree)
+
 
 def loadConfig():
     # constants
