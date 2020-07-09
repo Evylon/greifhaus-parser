@@ -6,10 +6,21 @@ import json
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+TYPE_BOULDERADO = 'boulderado'
+TYPE_WEBCLIMBER = 'webclimber'
 defaultConfig = {
-    'targets': {
-        'greifhaus': 'https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IkdyZWlmaGF1cyJ9.3Nen_IU5N2sVtJbP44CGCFfdKY93zQx2FRczY4z9Jy0'
-    },
+    'targets': [
+        {
+            'name': 'greifhaus',
+            'url': 'https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IkdyZWlmaGF1cyJ9.3Nen_IU5N2sVtJbP44CGCFfdKY93zQx2FRczY4z9Jy0',
+            'type': TYPE_BOULDERADO
+        },
+        {
+            'name': 'fliegerhalle',
+            'url': 'https://158.webclimber.de/de/trafficlight?callback=WebclimberTrafficlight.insertTrafficlight&key=yspPh6Mr2KdST3br8WC7X8p6BdETgmPn&hid=158&container=trafficlightContainer&type=&area=',
+            'type': TYPE_WEBCLIMBER
+        }
+    ],
     'outputDir': os.path.dirname(__file__)
 }
 
@@ -18,19 +29,19 @@ def main():
     if not config:
         exit(-1)
     outputDir = config['outputDir']
-    targetData = config['targets']
-    for target in targetData:
-        parseTarget(target, targetData[target], outputDir)
+    targets = config['targets']
+    for target in targets:
+        parseTarget(target, outputDir)
     
 
-def parseTarget(target, targetUrl, outputDir):
-    currentVisitors, currentFree = getClientCount(targetUrl)
+def parseTarget(target, outputDir):
+    currentVisitors, currentFree = getClientCount(target)
     if currentVisitors is None or currentFree is None:
         Log.log(Log.error, 'Failed to parse: currentVisitors = {}, currentFree = {}'.format(currentVisitors, currentFree))
         exit(-1)
 
-    counterFile = os.path.join(outputDir, '{}-counter.csv'.format(target))
-    latestDataFile = os.path.join(outputDir, '{}-latest.csv'.format(target))
+    counterFile = os.path.join(outputDir, '{}-counter.csv'.format(target['name']))
+    latestDataFile = os.path.join(outputDir, '{}-latest.csv'.format(target['name']))
     csvExists = os.path.exists(counterFile)
     lastEntry = None
     currentTime = datetime.now().replace(microsecond=0).isoformat()
@@ -52,9 +63,16 @@ def parseTarget(target, targetUrl, outputDir):
         latestDataCSV.write('time,visitors,available\n')
         latestDataCSV.write(newEntry)
 
-def getClientCount(url):
+def getClientCount(target):
+    url = target['url']
     html = urllib.request.urlopen(url).read()
     soup = BeautifulSoup(html, features='lxml')
+    if target['type'] == TYPE_BOULDERADO:
+        return parseBoulderado(soup)
+    elif target['type'] == TYPE_WEBCLIMBER:
+        return parseWebclimber(soup)
+
+def parseBoulderado(soup):
     currentVisitors = None
     currentFree = None
     for div in soup.find_all('div'):
@@ -62,6 +80,15 @@ def getClientCount(url):
             currentVisitors = div['data-value']
         if div['class'] == ['freecounter', 'zoom']:
             currentFree = div['data-value']
+    return (currentVisitors, currentFree)
+
+def parseWebclimber(soup):
+    currentVisitors = None
+    currentFree = None
+    for div in soup.find_all('div'):
+        if 'style' in div.attrs:
+            currentVisitors = int(div['style'].split(';')[0].split(' ')[1].strip('%'))
+            currentFree = 100 - currentVisitors
     return (currentVisitors, currentFree)
 
 def loadConfig():
