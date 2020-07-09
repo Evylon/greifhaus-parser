@@ -23,9 +23,16 @@ defaultConfig = {
             'type': TYPE_WEBCLIMBER
         },
         {
-            'name': 'the-spot',
+            'name': 'the-spot-boulder',
             'url': 'https://portal.rockgympro.com/portal/public/415a34a23151c6546419c1415d122b61/occupancy?&iframeid=occupancyCounter&fId=',
-            'type': TYPE_ROCKGYMPRO
+            'type': TYPE_ROCKGYMPRO,
+            'location': 'BLD'
+        },
+        {
+            'name': 'the-spot-denver',
+            'url': 'https://portal.rockgympro.com/portal/public/415a34a23151c6546419c1415d122b61/occupancy?&iframeid=occupancyCounter&fId=',
+            'type': TYPE_ROCKGYMPRO,
+            'location': 'DEN'
         }
     ],
     'outputDir': os.path.dirname(__file__)
@@ -79,7 +86,7 @@ def getClientCount(target):
     elif target['type'] == TYPE_WEBCLIMBER:
         return parseWebclimber(soup)
     elif target['type'] == TYPE_ROCKGYMPRO:
-        return parseRockGymPro(soup)
+        return parseRockGymPro(soup, target['location'])
 
 def parseBoulderado(soup):
     currentVisitors = None
@@ -100,15 +107,16 @@ def parseWebclimber(soup):
             currentFree = 100 - currentVisitors
     return (currentVisitors, currentFree)
 
-def parseRockGymPro(soup):
+def parseRockGymPro(soup, location):
     currentVisitors = None
     currentFree = None
     for script in soup.find_all('script'):
         contents = script.contents
         if contents and 'capacity' in contents[0] and 'count' in contents[0]:
             script = contents[0].replace('\n', '').replace(' ', '')
-            capacity = int(re.search(r'\'capacity\':(\d+?),', script).group(1))
-            currentVisitors = int(re.search(r'\'count\':(\d+?),', script).group(1))
+            filteredScript = re.search(rf'\'{location}\':{{(.+?)}}', script).group(1)
+            capacity = int(re.search(r'\'capacity\':(\d+?),', filteredScript).group(1))
+            currentVisitors = int(re.search(r'\'count\':(\d+?),', filteredScript).group(1))
             currentFree = capacity - currentVisitors
     return (currentVisitors, currentFree)
 
